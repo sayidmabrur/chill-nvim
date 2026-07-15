@@ -2,14 +2,21 @@ return {
 	"folke/which-key.nvim",
 	event = "VeryLazy",
 	opts = {
-		-- names for the leader-prefix groups shown in the popup
+		-- names for the leader-prefix groups shown in the popup.
+		-- Scheme: <leader> picks a SUBJECT, the next key picks the ACTION.
 		spec = {
 			{ "<leader>a", group = "AI / Claude Code" },
 			{ "<leader>b", group = "Buffer" },
+			{ "<leader>e", desc = "Explorer (Neo-tree)" },
 			{ "<leader>f", group = "Find (Telescope)" },
-			{ "<leader>g", group = "Git (Neogit/Diffview)" },
-			{ "<leader>h", group = "Git hunks" },
-			{ "<leader>t", group = "Toggle" },
+			{ "<leader>g", group = "Git" },
+			{ "<leader>gd", group = "Diff" },
+			{ "<leader>gh", group = "Hunk" },
+			{ "<leader>gt", group = "Git toggle" },
+			{ "<leader>m", group = "Multicursor" },
+			{ "<leader>q", group = "Quit / Session" },
+			{ "<leader>t", group = "Tab" },
+			{ "<leader>u", group = "UI / Toggle" },
 		},
 	},
 	keys = {

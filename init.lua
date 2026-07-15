@@ -1,5 +1,7 @@
 require("core")
 
+--#region
+----
 require("lazy").setup({ { import = "plugins" } }, {
 	ui = {
 		wrap = true, -- wrap the lines in the ui

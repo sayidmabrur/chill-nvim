@@ -12,10 +12,10 @@ return {
 		{ "<leader>gp", "<cmd>Neogit pull<cr>", desc = "Git: pull" },
 		{ "<leader>gP", "<cmd>Neogit push<cr>", desc = "Git: push" },
 		{ "<leader>gb", "<cmd>Telescope git_branches<cr>", desc = "Git: branches" },
-		-- diffview: see all changed files + diffs, and file history
-		{ "<leader>gd", "<cmd>DiffviewOpen<cr>", desc = "Git: diff view (all changes)" },
-		{ "<leader>gh", "<cmd>DiffviewFileHistory %<cr>", desc = "Git: file history (current)" },
-		{ "<leader>gH", "<cmd>DiffviewFileHistory<cr>", desc = "Git: repo history" },
+		-- diffview: see all changed files + diffs, and file history (Diff submenu <leader>gd*)
+		{ "<leader>gdd", "<cmd>DiffviewOpen<cr>", desc = "Diff: view (all changes)" },
+		{ "<leader>gdf", "<cmd>DiffviewFileHistory %<cr>", desc = "Diff: file history (current)" },
+		{ "<leader>gdr", "<cmd>DiffviewFileHistory<cr>", desc = "Diff: repo history" },
 	},
 	opts = {
 		integrations = {

@@ -73,4 +73,23 @@ map("n", "<leader>bd", function()
 	Snacks.bufdelete()
 end, "Buffer: close")
 
-map("n", "<A-t>", ":tabnew<cr>", "Tab: new")
+-- Tab Manage (<leader>t*)
+-- A "tab" is a whole page that can hold several splits/buffers. `:tabclose`
+-- closes the entire tab (all its splits) in ONE command, so you never repeat
+-- `:q` per split. `gt` / `gT` also cycle tabs.
+map("n", "<leader>tn", ":tabnew<cr>", "Tab: new")
+map("n", "<leader>tq", function()
+	if vim.fn.tabpagenr("$") > 1 then
+		vim.cmd("tabclose") -- close current tab and every split inside it
+	else
+		vim.notify("Last tab — use <leader>qq to quit Neovim", vim.log.levels.INFO)
+	end
+end, "Tab: close (all its splits at once)")
+map("n", "<leader>to", ":tabonly<cr>", "Tab: close all other tabs")
+map("n", "<leader>tl", ":tabnext<cr>", "Tab: next")
+map("n", "<leader>th", ":tabprevious<cr>", "Tab: previous")
+
+-- Quit / Session (<leader>q*)
+map("n", "<leader>qq", ":qa<cr>", "Quit: all")
+map("n", "<leader>qw", ":wqa<cr>", "Quit: write all & quit")
+map("n", "<leader>qf", ":qa!<cr>", "Quit: force (discard changes)")

@@ -25,7 +25,7 @@ return {
 		require("snacks").setup(opts)
 		-- Ctrl+W inside any snacks terminal returns focus to the editor (leaves
 		-- the terminal split open), matching the Claude terminal. Reopen/hide
-		-- with <leader>tt or <C-/>.
+		-- with <leader>ut or <C-/>.
 		vim.api.nvim_create_autocmd("FileType", {
 			pattern = "snacks_terminal",
 			group = vim.api.nvim_create_augroup("SnacksTerminalBackToEditor", {}),
@@ -38,10 +38,10 @@ return {
 		})
 	end,
 	keys = {
-		-- Terminal: <leader>tt is reliable in every terminal; <C-/> (with its
+		-- Terminal: <leader>ut is reliable in every terminal; <C-/> (with its
 		-- <C-_> alias that many terminals send for Ctrl+/) is the quick toggle
 		-- and also closes it from inside terminal mode.
-		{ "<leader>tt", function() Snacks.terminal.toggle() end, desc = "Terminal (toggle)" },
+		{ "<leader>ut", function() Snacks.terminal.toggle() end, desc = "Terminal (toggle)" },
 		{ "<C-/>", function() Snacks.terminal.toggle() end, mode = { "n", "t" }, desc = "Terminal (toggle)" },
 		{ "<C-_>", function() Snacks.terminal.toggle() end, mode = { "n", "t" }, desc = "which_key_ignore" },
 	},

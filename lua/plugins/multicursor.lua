@@ -14,26 +14,26 @@ return {
 		set({ "n", "x" }, "<down>", function()
 			mc.lineAddCursor(1)
 		end)
-		set({ "n", "x" }, "<leader><up>", function()
+		set({ "n", "x" }, "<leader>m<up>", function()
 			mc.lineSkipCursor(-1)
-		end)
-		set({ "n", "x" }, "<leader><down>", function()
+		end, { desc = "Multicursor: skip line up" })
+		set({ "n", "x" }, "<leader>m<down>", function()
 			mc.lineSkipCursor(1)
-		end)
+		end, { desc = "Multicursor: skip line down" })
 
 		-- Add or skip adding a new cursor by matching word/selection
-		set({ "n", "x" }, "<leader>n", function()
+		set({ "n", "x" }, "<leader>mn", function()
 			mc.matchAddCursor(1)
-		end)
-		set({ "n", "x" }, "<leader>s", function()
+		end, { desc = "Multicursor: add match next" })
+		set({ "n", "x" }, "<leader>ms", function()
 			mc.matchSkipCursor(1)
-		end)
-		set({ "n", "x" }, "<leader>N", function()
+		end, { desc = "Multicursor: skip match next" })
+		set({ "n", "x" }, "<leader>mN", function()
 			mc.matchAddCursor(-1)
-		end)
-		set({ "n", "x" }, "<leader>S", function()
+		end, { desc = "Multicursor: add match prev" })
+		set({ "n", "x" }, "<leader>mS", function()
 			mc.matchSkipCursor(-1)
-		end)
+		end, { desc = "Multicursor: skip match prev" })
 
 		-- Add and remove cursors with control + left click.
 		set("n", "<c-leftmouse>", mc.handleMouse)
@@ -51,7 +51,7 @@ return {
 			layerSet({ "n", "x" }, "<right>", mc.nextCursor)
 
 			-- Delete the main cursor.
-			layerSet({ "n", "x" }, "<leader>x", mc.deleteCursor)
+			layerSet({ "n", "x" }, "<leader>mx", mc.deleteCursor)
 
 			-- Enable and clear cursors using escape.
 			layerSet("n", "<esc>", function()

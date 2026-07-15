@@ -129,6 +129,19 @@ vim.api.nvim_create_autocmd("VimEnter", {
 	end,
 })
 
+-- Scroll the Claude chat WITHOUT leaving it. Claude's TUI renders full-screen
+-- (alternate screen), so its history is NOT in nvim's terminal-buffer scrollback
+-- -- dropping to terminal-normal mode would land in an empty "special mode" with
+-- nothing to scroll. Instead we stay in terminal mode and forward a scroll key
+-- straight to Claude, whose own viewport scrolls. Requires Claude's fullscreen
+-- renderer (PageUp/PageDown bound); toggle it with `/tui fullscreen` inside
+-- Claude, or `Ctrl+O` opens a less-style transcript pager as a fallback.
+local function claude_send(key)
+	return function()
+		vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(key, true, false, true), "n", false)
+	end
+end
+
 return {
 	"coder/claudecode.nvim",
 	dependencies = { "folke/snacks.nvim" },
@@ -152,6 +165,22 @@ return {
 						end,
 						mode = "t",
 						desc = "Switch back to editor",
+					},
+					-- Scroll the chat, focus staying in Claude. <C-k> -> PageUp,
+					-- <C-S-k> -> PageDown, sent to the Claude TUI. <C-S-k> is
+					-- distinct from <C-k> only under the kitty keyboard protocol
+					-- (kitty here) -- and needs kitty_mod+k freed in kitty.conf.
+					claude_scroll_up = {
+						"<C-k>",
+						claude_send("<PageUp>"),
+						mode = "t",
+						desc = "Claude: scroll up",
+					},
+					claude_scroll_down = {
+						"<C-S-k>",
+						claude_send("<PageDown>"),
+						mode = "t",
+						desc = "Claude: scroll down",
 					},
 				},
 			},
