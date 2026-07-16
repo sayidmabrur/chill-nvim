@@ -149,3 +149,8 @@ Everything is designed to stay out of your way.
 ## 😴 Screen Saver
 
 A custom idle animation that keeps your editor looking polished even when you're away.
+
+---
+Copyright (c) 2026 Sayid M.
+
+All rights reserved.
