@@ -10,6 +10,15 @@ vim.api.nvim_create_autocmd("LspAttach", {
 			vim.keymap.set("n", lhs, rhs, { buffer = ev.buf, silent = true, desc = desc })
 		end
 		map("K", vim.lsp.buf.hover, "LSP: hover docs")
+		-- Go to definition via Telescope (jumps straight to a lone result; shows a
+		-- picker menu when there are several). Jump back with the built-in <C-o>.
+		-- In the menu: <CR> open here, <S-CR> vertical split, <C-CR> horizontal
+		-- split, ? help (press <Esc> first) — configured in config/telescope.lua.
+		--   <C-CR>          keyboard (Ctrl+Enter; distinct on kitty)
+		--   <C-RightMouse>  Ctrl+right-click (the <LeftMouse> prefix first moves the
+		--                   cursor to the clicked word; Ctrl+left-click stays multicursor)
+		map("<C-CR>", "<cmd>Telescope lsp_definitions<CR>", "LSP: go to definition")
+		map("<C-RightMouse>", "<LeftMouse><cmd>Telescope lsp_definitions<CR>", "LSP: go to definition (click)")
 	end,
 })
 

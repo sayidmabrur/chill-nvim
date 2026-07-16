@@ -29,6 +29,15 @@ map("n", "<C-h>", ":vertical resize +2<CR>", "Window: increase width")
 map("n", "<C-l>", ":vertical resize -2<CR>", "Window: decrease width")
 map("n", "<C-k>", ":resize -2<CR>", "Window: decrease height")
 
+-- Buffer cycle (bufferline is disabled in favour of the tabby tabline).
+map("n", "]b", ":bnext<cr>", "Buffer: next")
+map("n", "[b", ":bprevious<cr>", "Buffer: previous")
+
+-- Jumplist back/forward. <C-o> (back) is built-in; pair it with <C-S-o> to jump
+-- forward (same as the built-in <C-i>) so you can go back and forth. <C-S-o> is
+-- distinct from <C-o> on kitty (kitty keyboard protocol).
+map("n", "<C-S-o>", "<C-i>", "Jump: forward (redo jump)")
+
 -- Insert --
 -- Press jk fast to enter
 map("i", "jk", "<ESC>", "Escape to normal mode")

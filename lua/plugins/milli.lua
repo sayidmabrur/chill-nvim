@@ -17,18 +17,210 @@ return {
 		local uv = vim.uv or vim.loop
 
 		-- Tweak to taste:
-		--   IDLE_MS    = idle time (ms) before the saver appears
-		--   SPLASH     = any name from `:MilliPreview` / require("milli").list()
-		--                (bundled: fire, blackhole, finger, dancerramp, skeleton, vibecat)
-		--   SHOW_CLOCK = draw the big clock above the cat
-		--   CLOCK_FMT  = os.date format; only digits and ":" render as big glyphs
-		--   WINBLEND   = float transparency: 0 = opaque, 100 = fully see-through.
-		--                Higher = your editor shows through more (art fades too).
+		--   IDLE_MS         = idle time (ms) before the saver appears
+		--   FALLBACK_SPLASH = built-in used when no splash_hero.gif is baked yet
+		--                     (bundled: fire, blackhole, finger, dancerramp, skeleton, vibecat)
+		--   SHOW_CLOCK      = draw the big clock above the art
+		--   CLOCK_FMT       = os.date format; only digits and ":" render as big glyphs
+		--   WINBLEND        = float transparency: 0 = opaque, 100 = fully see-through.
+		--                     Higher = your editor shows through more (art fades too).
+		--   WIDTH           = ASCII columns when baking splash_hero.gif
+		--   MAX_FRAMES      = cap baked frames; long GIFs are down-sampled (ffmpeg)
+		--                     so the baked Lua stays small. 0 = keep every frame.
+		--   NO_BG           = cut the background out of splash_hero (--no-bg) so only
+		--                     the subject shows over the transparent float
 		local IDLE_MS = 30000
-		local SPLASH = "vibecat"
+		local FALLBACK_SPLASH = "vibecat"
 		local SHOW_CLOCK = true
 		local CLOCK_FMT = "%H:%M"
 		local WINBLEND = 30
+		local WIDTH = 80
+		local MAX_FRAMES = 60
+		local NO_BG = true
+
+		-- YOUR ANIME: drop/replace ~/.config/nvim/splash_hero.gif and it becomes the
+		-- screensaver. milli can't read a GIF live, so we bake it to a Lua splash
+		-- with the milli CLI whenever the GIF is newer than the last bake (async,
+		-- gated on mtime — a no-op on normal startups). `:SplashRebuild` forces it.
+		local cfg = vim.fn.stdpath("config")
+		local HERO_GIF = cfg .. "/splash_hero.gif"
+		local HERO_NAME = "splash_hero"
+		local HERO_LUA = cfg .. "/lua/milli/splashes/" .. HERO_NAME .. ".lua"
+
+		local function mtime(p)
+			local st = uv.fs_stat(p)
+			return st and st.mtime.sec or nil
+		end
+
+		-- Which splash the screensaver shows: an explicit :SplashUse choice wins,
+		-- else the baked anime if present, else the bundled fallback. The :SplashUse
+		-- choice is PERSISTED to a small state file, so it survives nvim restarts.
+		local STATE = vim.fn.stdpath("data") .. "/milli_screensaver_splash"
+		local function save_choice(name)
+			if name then
+				pcall(vim.fn.writefile, { name }, STATE)
+			else
+				pcall(vim.fn.delete, STATE) -- "auto" = no state file
+			end
+		end
+		local function load_choice()
+			if vim.fn.filereadable(STATE) == 1 then
+				local name = (vim.fn.readfile(STATE) or {})[1]
+				if name and name ~= "" and vim.tbl_contains(milli.list(), name) then
+					return name -- ignore a saved name that no longer exists
+				end
+			end
+			return nil
+		end
+		local splash_override = load_choice() -- restore last :SplashUse choice
+		local function current_splash()
+			return splash_override or (mtime(HERO_LUA) and HERO_NAME or FALLBACK_SPLASH)
+		end
+
+		-- Run an external command, calling back on the main loop.
+		local function run(cmd, on_done)
+			vim.system(cmd, { text = true }, vim.schedule_wrap(on_done))
+		end
+
+		-- no_bg_override: nil = use the NO_BG default, true/false = force per-rebuild.
+		local function build_hero(force, no_bg_override)
+			local gif_m = mtime(HERO_GIF)
+			if not gif_m then
+				return -- no source GIF; stay on FALLBACK_SPLASH
+			end
+			local lua_m = mtime(HERO_LUA)
+			if not force and lua_m and lua_m >= gif_m then
+				return -- bake already up to date
+			end
+			if vim.fn.executable("milli") == 0 then
+				vim.notify(
+					"splash_hero: milli CLI not found — install with `npm i -g @amansingh-afk/milli`",
+					vim.log.levels.WARN
+				)
+				return
+			end
+			local out = vim.fn.stdpath("cache") .. "/milli_hero"
+			vim.fn.mkdir(out, "p")
+			vim.fn.mkdir(cfg .. "/lua/milli/splashes", "p")
+			vim.notify(
+				"splash_hero: baking splash_hero.gif… (screensaver uses the fallback until it's ready)",
+				vim.log.levels.INFO
+			)
+
+			-- Background cut: an explicit :SplashRebuild arg wins over the NO_BG default.
+			local cut = NO_BG
+			if no_bg_override ~= nil then
+				cut = no_bg_override
+			end
+
+			-- milli export <src> → out/frames.lua → copy into place.
+			local function export_from(src)
+				local args = { "milli", "export", src, out, "-t", "lua", "-w", tostring(WIDTH) }
+				if cut then
+					table.insert(args, "--no-bg") -- transparent cutout: drop the background
+				end
+				run(args, function(res)
+					if res.code ~= 0 then
+						vim.notify("splash_hero build failed:\n" .. (res.stderr or res.stdout or ""), vim.log.levels.ERROR)
+						return
+					end
+					if not uv.fs_copyfile(out .. "/frames.lua", HERO_LUA) then
+						vim.notify("splash_hero: built but could not copy frames.lua", vim.log.levels.ERROR)
+						return
+					end
+					package.loaded["milli.splashes." .. HERO_NAME] = nil -- drop stale require cache
+					vim.notify("splash_hero baked from splash_hero.gif ✓ (idle to see it)", vim.log.levels.INFO)
+				end)
+			end
+
+			-- Long GIFs bake into huge Lua files, so down-sample to MAX_FRAMES first
+			-- (needs ffprobe+ffmpeg; without them, or MAX_FRAMES=0, bake every frame).
+			local have_ffmpeg = vim.fn.executable("ffprobe") == 1 and vim.fn.executable("ffmpeg") == 1
+			if not (MAX_FRAMES and MAX_FRAMES > 0 and have_ffmpeg) then
+				if MAX_FRAMES and MAX_FRAMES > 0 and not have_ffmpeg then
+					vim.notify("splash_hero: ffmpeg not found — baking every frame (larger file)", vim.log.levels.WARN)
+				end
+				export_from(HERO_GIF)
+				return
+			end
+
+			run({
+				"ffprobe", "-v", "error", "-select_streams", "v:0", "-count_frames",
+				"-show_entries", "stream=nb_read_frames", "-of", "default=nk=1:nw=1", HERO_GIF,
+			}, function(res)
+				local n = tonumber((res.stdout or ""):match("%d+"))
+				if not n or n <= MAX_FRAMES then
+					export_from(HERO_GIF)
+					return
+				end
+				local stride = math.ceil(n / MAX_FRAMES)
+				local sampled = out .. "/sampled.gif"
+				run({
+					"ffmpeg", "-y", "-i", HERO_GIF,
+					"-vf", "select=not(mod(n\\," .. stride .. ")),setpts=N/(15*TB)",
+					"-loop", "0", sampled,
+				}, function(fr)
+					if fr.code ~= 0 then
+						vim.notify("splash_hero: down-sample failed, baking full gif", vim.log.levels.WARN)
+						export_from(HERO_GIF)
+					else
+						export_from(sampled)
+					end
+				end)
+			end)
+		end
+
+		-- :SplashRebuild            → rebuild using the NO_BG default
+		-- :SplashRebuild cut        → force background removal for this bake
+		-- :SplashRebuild keep       → force keeping the background for this bake
+		vim.api.nvim_create_user_command("SplashRebuild", function(o)
+			local override = nil
+			if o.args == "cut" then
+				override = true
+			elseif o.args == "keep" then
+				override = false
+			end
+			build_hero(true, override)
+		end, {
+			nargs = "?",
+			complete = function()
+				return { "cut", "keep" }
+			end,
+			desc = "Rebuild screensaver splash from splash_hero.gif ([cut|keep] background)",
+		})
+
+		-- :SplashUse            → auto (your baked anime if present, else fallback)
+		-- :SplashUse vibecat    → screensaver shows the bundled vibecat, etc.
+		-- :SplashUse splash_hero→ back to your baked anime
+		-- (tab-completes all bundled/baked names + "auto"; use :MilliPreview to peek)
+		vim.api.nvim_create_user_command("SplashUse", function(o)
+			local name = o.args
+			if name == "" or name == "auto" then
+				splash_override = nil
+				save_choice(nil)
+				vim.notify("screensaver splash: auto → " .. current_splash(), vim.log.levels.INFO)
+				return
+			end
+			local names = milli.list()
+			if not vim.tbl_contains(names, name) then
+				vim.notify(
+					"splash not found: " .. name .. "\navailable: " .. table.concat(names, ", "),
+					vim.log.levels.WARN
+				)
+				return
+			end
+			splash_override = name
+			save_choice(name)
+			vim.notify("screensaver splash: " .. name .. " (saved)", vim.log.levels.INFO)
+		end, {
+			nargs = "?",
+			complete = function()
+				local names = milli.list()
+				table.insert(names, 1, "auto")
+				return names
+			end,
+			desc = "Pick which splash the screensaver shows (name, or 'auto')",
+		})
 
 		-- Cozy note shown under the cat. Edit freely; "" is a blank spacer line.
 		local MESSAGE = {
@@ -82,10 +274,11 @@ return {
 			start_idle() -- resume watching for the next idle stretch
 		end
 
-		-- Don't cover an active terminal (e.g. the Claude chat) or the cmdline.
+		-- Don't cover an active terminal (e.g. the Claude chat), the cmdline, or a
+		-- focus-mode break screen (see lua/core/focus.lua).
 		local function skip()
 			local mode = vim.api.nvim_get_mode().mode
-			return mode:find("^[tc]") ~= nil or vim.bo.buftype == "terminal"
+			return mode:find("^[tc]") ~= nil or vim.bo.buftype == "terminal" or vim.g.focus_break_active == true
 		end
 
 		local function center(line, win_w)
@@ -224,9 +417,10 @@ return {
 				vim.wo[win].winhighlight = "Normal:MilliSaverBg,NormalFloat:MilliSaverBg,EndOfLine:MilliSaverBg"
 				vim.wo[win].winblend = WINBLEND
 
-				local data = milli.load({ splash = SPLASH })
+				local splash = current_splash()
+				local data = milli.load({ splash = splash })
 				seed_frame0(data, vim.api.nvim_win_get_width(win), vim.api.nvim_win_get_height(win))
-				milli.play(buf, { splash = SPLASH, loop = true })
+				milli.play(buf, { splash = splash, loop = true })
 				if SHOW_CLOCK then
 					clock_timer:start(0, 1000, vim.schedule_wrap(paint_clock)) -- tick every 1s
 				end
@@ -263,6 +457,7 @@ return {
 			end,
 		})
 
+		build_hero(false) -- bake splash_hero.gif now if it changed since last time
 		start_idle()
 	end,
 }

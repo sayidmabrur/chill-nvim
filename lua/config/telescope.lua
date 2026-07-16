@@ -25,6 +25,9 @@ telescope.setup({
 				["<C-x>"] = actions.select_horizontal,
 				["<C-v>"] = actions.select_vertical,
 				["<C-t>"] = actions.select_tab,
+				-- neo-tree-style split opens (distinct on kitty):
+				["<C-CR>"] = actions.select_horizontal, -- Ctrl+Enter → horizontal split
+				["<S-CR>"] = actions.select_vertical, -- Shift+Enter → vertical split
 
 				["<C-u>"] = actions.preview_scrolling_up,
 				["<C-d>"] = actions.preview_scrolling_down,
@@ -47,6 +50,9 @@ telescope.setup({
 				["<C-x>"] = actions.select_horizontal,
 				["<C-v>"] = actions.select_vertical,
 				["<C-t>"] = actions.select_tab,
+				-- neo-tree-style split opens (distinct on kitty):
+				["<C-CR>"] = actions.select_horizontal, -- Ctrl+Enter → horizontal split
+				["<S-CR>"] = actions.select_vertical, -- Shift+Enter → vertical split
 
 				["<Tab>"] = actions.toggle_selection + actions.move_selection_worse,
 				["<S-Tab>"] = actions.toggle_selection + actions.move_selection_better,

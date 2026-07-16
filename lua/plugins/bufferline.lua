@@ -1,5 +1,9 @@
 return {
 	"akinsho/bufferline.nvim",
+	-- Disabled: the tabline is now tabby.nvim (lua/plugins/tabby.lua), which can
+	-- render the fixed project pill bufferline can't. Flip to true to switch back
+	-- (and disable tabby) — its buffer-cycle keys move to ]b/[b in core/keymaps.
+	enabled = false,
 	version = "*",
 	event = "VeryLazy",
 	dependencies = "nvim-tree/nvim-web-devicons",
