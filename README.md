@@ -1,16 +1,42 @@
+# Chill.nvim
+
+A modern, keyboard-first Neovim configuration built for speed, focus, and an AI-native development workflow.
+
+VS Code is a powerful editor, but it comes with the cost of running on Electron: higher memory usage, more background processes, and a heavier environment. Chill.nvim takes a different approach.
+
+Built on top of Neovim and Lua, this configuration focuses on:
+
+* ⚡ Fast startup and low resource usage
+* ⌨️ A completely mouse-free workflow
+* 🧠 Deep customization through Lua
+* 🎯 A distraction-free coding environment
+* 🤖 Integrated AI-assisted development with Claude Code
+
+Chill.nvim turns Neovim into a complete development workspace while keeping the experience lightweight and efficient.
+
+---
+
 # 📸 Screenshots
 
-## 🏠 New Project Dashboard
+## 🤖 Claude Code Integration
+
+AI-assisted development directly inside Neovim.
+
+![Claude Code Integration](https://github.com/user-attachments/assets/c96beef5-6963-4dc6-8694-286768576738)
+
+---
+
+## 🏠 Project Dashboard
 
 Launch into your projects with a clean dashboard featuring recent projects and quick actions.
 
-![New Project Screen](https://github.com/user-attachments/assets/a9a9aa1d-c237-4be7-888d-275cf02d3610)
+![Project Dashboard](https://github.com/user-attachments/assets/a9a9aa1d-c237-4be7-888d-275cf02d3610)
 
 ---
 
 ## 💻 Coding Experience
 
-A distraction-free editor optimized for productivity with clean splits, floating windows, and AI-assisted development.
+A focused editing environment with clean splits, floating windows, and AI-powered workflows.
 
 ![Editor](https://github.com/user-attachments/assets/1f28516c-4d2e-4478-bc55-ae316ee507ec)
 
@@ -18,31 +44,31 @@ A distraction-free editor optimized for productivity with clean splits, floating
 
 ## 🔍 Fast File Search
 
-Navigate large codebases instantly with fuzzy searching.
+Navigate large codebases instantly using fuzzy search.
 
 ![File Search](https://github.com/user-attachments/assets/1db06675-95c6-46f6-875e-01c29ba4a1c0)
 
 ---
 
-## 📝 Git Diff
+## 📝 Git Diff Workflow
 
-Review code changes directly inside Neovim with a clean, readable diff view for inspecting additions, deletions, and modifications.
+Review changes directly inside Neovim with a clean diff interface.
 
-<img width="1920" height="1075" alt="Git Diff" src="https://github.com/user-attachments/assets/588947cf-254b-40c2-a417-46961f259699" />
-
----
-
-## ⌨️ Keymap Helper
-
-Every feature in Chill.nvim is accessible from the keyboard. A built-in keymap helper lets you quickly discover shortcuts without leaving your editing flow.
-
-<img width="1920" height="1075" alt="Keymap Helper" src="https://github.com/user-attachments/assets/294eeab8-63aa-42ba-9be6-708e1056585e" />
+![Git Diff](https://github.com/user-attachments/assets/588947cf-254b-40c2-a417-46961f259699)
 
 ---
 
-## 😴 Screen Saver
+## ⌨️ Keymap Discovery
 
-When Neovim is idle, Chill.nvim displays a custom animated screen saver for a polished terminal experience.
+Find shortcuts quickly without leaving your editing workflow.
+
+![Keymap Helper](https://github.com/user-attachments/assets/294eeab8-63aa-42ba-9be6-708e1056585e)
+
+---
+
+## 😴 Idle Screen Saver
+
+A custom animation displayed when Neovim is idle.
 
 ![Screen Saver](https://github.com/user-attachments/assets/d0149bb7-2937-4ca2-b500-9342ade413ee)
 
@@ -50,107 +76,140 @@ When Neovim is idle, Chill.nvim displays a custom animated screen saver for a po
 
 # 🚀 Features
 
-## ⌨️ 100% Mouse-Free Workflow
+## ⌨️ Keyboard-First Workflow
 
-Chill.nvim is designed to be used entirely from the keyboard.
+Chill.nvim is designed around staying on the keyboard.
 
-- No mouse required
-- Every feature has a shortcut
-- Built-in keymap discovery
-- Fast command execution
-- Efficient navigation
-- Stay focused on the keyboard
+* Zero mouse dependency
+* Every action has a shortcut
+* Built-in keymap discovery
+* Fast navigation
+* Minimal context switching
+
+The goal is simple: keep your hands on the keyboard and your focus on the code.
 
 ---
 
 ## 🤖 Claude Code Integration
 
-Built around the Claude Code CLI for an AI-native development workflow.
+An AI-native workflow built around the Claude Code CLI.
 
-- Launch Claude directly from Neovim
-- Integrated terminal workflow
-- Optimized window layout
-- Stay inside your editor while working with AI
+Features:
 
----
-
-## 📂 Custom Dashboard
-
-A modern project launcher designed for speed.
-
-- Recent projects
-- Quick actions
-- Minimal interface
-- Fast startup
+* Launch Claude directly from Neovim
+* Integrated terminal workflow
+* Optimized window layouts
+* Work with AI without leaving your editor
 
 ---
 
-## 🪟 Buffer & Tab Workflow
+## 📂 Project Dashboard
 
-Navigation is designed around efficiency.
+A lightweight project launcher designed for speed.
 
-- Smart buffer switching
-- Optimized tab management
-- Clean window layouts
-- Keyboard-first navigation
+Features:
+
+* Recent projects
+* Quick actions
+* Minimal interface
+* Fast startup experience
 
 ---
 
-## 🔍 Fast File Search
+## 🪟 Efficient Buffer & Window Management
 
-Quickly locate anything inside your project.
+Designed for working with multiple files and contexts.
 
-- Fuzzy search
-- Instant navigation
-- Keyboard-driven workflow
-- Large project friendly
+Features:
+
+* Smart buffer switching
+* Clean tab workflow
+* Optimized window layouts
+* Keyboard-driven navigation
+
+---
+
+## 🔍 Powerful Search
+
+Find files and code quickly in any project.
+
+Features:
+
+* Fuzzy file search
+* Instant navigation
+* Large project support
+* Keyboard-only operation
 
 ---
 
 ## 📝 Git Integration
 
-Inspect changes without leaving Neovim.
+Review and manage changes without leaving Neovim.
 
-- Side-by-side Git diffs
-- Clear added/removed line highlighting
-- Review changes before committing
-- Smooth Git workflow
+Features:
+
+* Side-by-side diffs
+* Added/deleted line highlighting
+* Commit preparation workflow
+* Integrated Git experience
 
 ---
 
 ## 🖥️ Floating Terminal
 
-Instant terminal access without leaving your workflow.
+Access your tools instantly while keeping your workflow intact.
 
-Perfect for:
+Useful for:
 
-- Claude Code
-- Git
-- npm / pnpm / yarn
-- Cargo
-- Go
-- Build tools
-- Testing
+* Claude Code
+* Git commands
+* npm / pnpm / yarn
+* Cargo
+* Go tools
+* Build systems
+* Testing
 
 ---
 
 ## 🎨 Minimal UI
 
-Everything is designed to stay out of your way.
+A clean interface designed to keep attention on the code.
 
-- Clean statusline
-- Modern icons
-- Floating windows
-- Consistent color palette
-- Smooth user experience
+Features:
+
+* Modern statusline
+* Floating windows
+* Icons and visual indicators
+* Consistent theme
+* Lightweight design
+
+---
+
+## 😴 Custom Screen Saver
+
+A small detail that makes the terminal experience feel polished.
+
+When Neovim is idle, Chill.nvim displays a custom animation instead of a static screen.
 
 ---
 
-## 😴 Screen Saver
+# 🛠️ Philosophy
 
-A custom idle animation that keeps your editor looking polished even when you're away.
+Chill.nvim follows a few simple principles:
+
+* Keep the editor fast
+* Avoid unnecessary complexity
+* Prefer keyboard workflows
+* Make features discoverable
+* Customize everything with Lua
+* Build an environment that stays out of the way
+
+Your editor should help you think, not slow you down.
 
 ---
+
+# 📜 License
+
 Copyright (c) 2026 Sayid M.
 
 All rights reserved.
