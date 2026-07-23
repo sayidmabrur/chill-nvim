@@ -210,6 +210,4 @@ Your editor should help you think, not slow you down.
 
 # 📜 License
 
-Copyright (c) 2026 Sayid M.
-
-All rights reserved.
+Copyright (c) All rights reserved.
