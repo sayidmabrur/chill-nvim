@@ -129,6 +129,52 @@ vim.api.nvim_create_autocmd("VimEnter", {
 	end,
 })
 
+-- Sticky Claude terminal across tabs. The plugin keeps ONE Claude session, but
+-- its window only lives in the tab it was opened in (its visibility check is
+-- global, so switching tabs leaves it behind). This makes the very same terminal
+-- follow you: on entering a tab, if Claude is open in another tab, close that
+-- window and re-show the same buffer here (no focus steal, no new session). If
+-- Claude is hidden everywhere (you toggled it off with <leader>ac), it stays
+-- hidden -- we never resurrect it.
+vim.api.nvim_create_autocmd("TabEnter", {
+	group = vim.api.nvim_create_augroup("ClaudeStickyTab", { clear = true }),
+	callback = function()
+		vim.schedule(function()
+			local ok, term = pcall(require, "claudecode.terminal")
+			if not ok or type(term.get_active_terminal_bufnr) ~= "function" then
+				return
+			end
+			local buf = term.get_active_terminal_bufnr()
+			if not buf or not vim.api.nvim_buf_is_valid(buf) then
+				return
+			end
+			local cur_tab = vim.api.nvim_get_current_tabpage()
+			local here, elsewhere = false, {}
+			local info = vim.fn.getbufinfo(buf)[1]
+			for _, win in ipairs((info and info.windows) or {}) do
+				if vim.api.nvim_win_is_valid(win) then
+					if vim.api.nvim_win_get_tabpage(win) == cur_tab then
+						here = true
+					else
+						table.insert(elsewhere, win)
+					end
+				end
+			end
+			-- already in this tab, or hidden everywhere (user closed it): leave it.
+			if here or #elsewhere == 0 then
+				return
+			end
+			-- open in another tab -> relocate the same terminal into this one.
+			for _, win in ipairs(elsewhere) do
+				pcall(vim.api.nvim_win_close, win, false)
+			end
+			pcall(function()
+				term.ensure_visible()
+			end)
+		end)
+	end,
+})
+
 -- Scroll the Claude chat WITHOUT leaving it. Claude's TUI renders full-screen
 -- (alternate screen), so its history is NOT in nvim's terminal-buffer scrollback
 -- -- dropping to terminal-normal mode would land in an empty "special mode" with
@@ -142,6 +188,31 @@ local function claude_send(key)
 	end
 end
 
+-- Clean session switch. `:ClaudeCode --resume/--continue` on an already-open
+-- terminal just toggles the window and IGNORES the args (see simple_toggle), and
+-- the previous session's Claude process stays connected as a stale WebSocket
+-- client. Because <leader>as broadcasts the @-mention to every connected client,
+-- a lingering old session steals the selection and the new one gets nothing.
+-- So: kill the current Claude terminal first (its process dies -> its client
+-- disconnects), then relaunch with the flag so the freshly-picked session is the
+-- ONLY connection and selections always land in it.
+local function claude_switch(cli_args)
+	return function()
+		local ok, term = pcall(require, "claudecode.terminal")
+		if ok and type(term.get_active_terminal_bufnr) == "function" then
+			local buf = term.get_active_terminal_bufnr()
+			if buf and vim.api.nvim_buf_is_valid(buf) then
+				pcall(vim.api.nvim_buf_delete, buf, { force = true })
+			end
+		end
+		-- defer so the provider clears its cached instance (BufWipeout) before we
+		-- relaunch; otherwise the reused-terminal path would ignore the flag again.
+		vim.defer_fn(function()
+			pcall(vim.cmd, "ClaudeCode " .. cli_args)
+		end, 150)
+	end
+end
+
 return {
 	"coder/claudecode.nvim",
 	dependencies = { "folke/snacks.nvim" },
@@ -149,6 +220,15 @@ return {
 	-- the Claude terminal so you can type a prompt without switching buffers.
 	opts = {
 		focus_after_send = true,
+		-- Reliability when sending a selection (<leader>as) right as a session is
+		-- opening. Defaults drop a queued @-mention after 5s (queue_timeout) while
+		-- still waiting up to 10s for the connection (connection_timeout) -- so a
+		-- slow-to-start session (e.g. --resume/--continue loading a big history)
+		-- exceeds 5s, the mention expires, and nothing is written. Give a session
+		-- longer to connect, and keep mentions queued for at least that long so they
+		-- survive the whole connection window instead of being dropped early.
+		connection_timeout = 20000,
+		queue_timeout = 20000,
 		terminal = {
 			-- Launch Claude in the project root so sessions never mix (see above).
 			cwd_provider = project_root,
@@ -210,8 +290,8 @@ return {
 		{ "<leader>a", nil, desc = "AI/Claude Code" },
 		{ "<leader>ac", "<cmd>ClaudeCode<cr>", desc = "Toggle Claude" },
 		{ "<leader>af", "<cmd>ClaudeCodeFocus<cr>", desc = "Focus Claude" },
-		{ "<leader>ar", "<cmd>ClaudeCode --resume<cr>", desc = "Resume Claude" },
-		{ "<leader>aC", "<cmd>ClaudeCode --continue<cr>", desc = "Continue Claude" },
+		{ "<leader>ar", claude_switch("--resume"), desc = "Resume Claude (clean switch)" },
+		{ "<leader>aC", claude_switch("--continue"), desc = "Continue Claude (clean switch)" },
 		{ "<leader>am", "<cmd>ClaudeCodeSelectModel<cr>", desc = "Select Claude model" },
 		{ "<leader>ab", "<cmd>ClaudeCodeAdd %<cr>", desc = "Add current buffer" },
 		-- select lines in visual mode, press <leader>as (Space a s): sends

@@ -7,9 +7,11 @@ return {
 		spec = {
 			{ "<leader>a", group = "AI / Claude Code" },
 			{ "<leader>b", group = "Buffer" },
+			{ "<leader>bm", group = "Buffer move" },
 			{ "<leader>e", desc = "Explorer (Neo-tree)" },
 			{ "<leader>f", group = "Find (Telescope)" },
 			{ "<leader>g", group = "Git" },
+			{ "<leader>l", desc = "LSP env (choose interpreter)" },
 			{ "<leader>gd", group = "Diff" },
 			{ "<leader>gh", group = "Hunk" },
 			{ "<leader>gt", group = "Git toggle" },

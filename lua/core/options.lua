@@ -45,3 +45,25 @@ vim.cmd("set whichwrap+=<,>,[,],h,l")
 vim.cmd([[set iskeyword+=-]])
 vim.cmd([[set formatoptions-=cro]]) -- TODO: this doesn't seem to work
 vim.cmd([[set laststatus=3]]) -- TODO: status line fixed bottom
+
+-- Clipboard provider. `clipboard = unnamedplus` above routes yanks to the system
+-- clipboard, which needs a provider. Prefer a native tool (wl-clipboard on
+-- Wayland, xclip/xsel on X11); if none is installed, fall back to OSC 52 so
+-- copying still works straight through the terminal (kitty) with no external
+-- dependency -- fixes "E319: No 'clipboard' provider found". Install wl-clipboard
+-- to get full local + paste integration and this fallback steps aside.
+if
+	vim.fn.executable("wl-copy") == 0
+	and vim.fn.executable("xclip") == 0
+	and vim.fn.executable("xsel") == 0
+	and vim.fn.executable("pbcopy") == 0
+then
+	local ok, osc52 = pcall(require, "vim.ui.clipboard.osc52")
+	if ok then
+		vim.g.clipboard = {
+			name = "OSC 52",
+			copy = { ["+"] = osc52.copy("+"), ["*"] = osc52.copy("*") },
+			paste = { ["+"] = osc52.paste("+"), ["*"] = osc52.paste("*") },
+		}
+	end
+end

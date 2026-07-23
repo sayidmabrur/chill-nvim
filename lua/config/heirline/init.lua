@@ -1,24 +1,54 @@
 local conditions = require("heirline.conditions")
--- defining lines
+local utils = require("heirline.utils")
 local statusline = require("config.heirline.layouts.statusline")
+-- Winbar = the nvim-navic code breadcrumb (icon file › symbol › …). It is shown
+-- ONLY on real file editors; disable_winbar_cb below hides it on dashboards,
+-- terminals, trees, pickers, etc. so the look stays consistent. Tabline = tabby.
 local winbar = require("config.heirline.layouts.winbar")
--- tabline is handled by bufferline.nvim, not heirline
-local colors = require("kanagawa.colors")
+-- Named palette the components reference (customNormal, winterGreen, lotusWhite4, …).
+-- A function (not a table): rebuilt from the ACTIVE colorscheme on every call so
+-- the bar tracks whatever theme is loaded. on_colorscheme() below re-invokes it.
+local colors = require("config.heirline.components.colors.dynamic")
 
 require("heirline").setup({
 	statusline = statusline,
 	winbar = winbar,
 	opts = {
-		-- if the callback returns true, the winbar will be disabled for that window
-		-- the args parameter corresponds to the table argument passed to autocommand callbacks. :h nvim_lua_create_autocmd()
 		colors = colors,
+		-- return true → no winbar for that window (keeps special buffers bar-free)
 		disable_winbar_cb = function(args)
 			return conditions.buffer_matches({
-				buftype = { "nofile", "prompt", "help", "quickfix" },
-				filetype = { "^git.*", "fugitive", "Trouble", "dashboard" },
+				buftype = { "nofile", "prompt", "help", "quickfix", "terminal" },
+				filetype = {
+					"neo-tree",
+					"neo-tree-popup",
+					"alpha",
+					"dashboard",
+					"Trouble",
+					"trouble",
+					"toggleterm",
+					"TelescopePrompt",
+					"lazy",
+					"mason",
+					"qf",
+					"^git.*",
+					"fugitive",
+				},
 			}, args.buf)
 		end,
 	},
+})
+
+-- Heirline compiles its highlights once and does NOT watch 'ColorScheme' on its
+-- own, so switching theme (e.g. via <leader>uc) left the statusline on the OLD
+-- colors until a restart. on_colorscheme() flushes the highlight cache, reloads
+-- the named palette, and drops each window's cache so every component's hl
+-- re-resolves against the new theme.
+vim.api.nvim_create_autocmd("ColorScheme", {
+	callback = function()
+		utils.on_colorscheme(colors)
+	end,
+	desc = "heirline: rebuild highlights on colorscheme change",
 })
 
 -- Yep, with heirline we're driving manual!

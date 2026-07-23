@@ -22,6 +22,20 @@ vim.lsp.config("lua_ls", {
 	},
 })
 
+-- Python: pylsp is auto-enabled by mason-lspconfig, but pyright already
+-- handles real diagnostics. Silence pylsp's noisy pycodestyle style checks
+-- (E302 "expected 2 blank lines", E501 "line too long", etc.).
+vim.lsp.config("pylsp", {
+	settings = {
+		pylsp = {
+			plugins = {
+				pycodestyle = { enabled = false },
+				mccabe = { enabled = false },
+			},
+		},
+	},
+})
+
 vim.lsp.enable({
 	"lua_ls", -- Lua
 	"intelephense", -- PHP

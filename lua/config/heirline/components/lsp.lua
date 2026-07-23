@@ -1,18 +1,20 @@
 local conditions = require("heirline.conditions")
+local icons = require("config.heirline.components.icons")
+
+-- Attached LSP servers with a gears icon.
 return {
 	condition = conditions.lsp_attached,
-	update = { "LspAttach", "LspDetach" },
+	update = { "LspAttach", "LspDetach", "BufEnter" },
 
-	-- You can keep it simple,
-	-- provider = " [LSP]",
-
-	-- Or complicate things a bit and get the servers names
 	provider = function()
 		local names = {}
 		for _, server in pairs(vim.lsp.get_clients({ bufnr = 0 })) do
 			table.insert(names, server.name)
 		end
-		return "   " .. table.concat(names, ",") .. ""
+		if #names == 0 then
+			return ""
+		end
+		return icons.lsp .. " " .. table.concat(names, " ")
 	end,
-	hl = { bold = true },
+	hl = { fg = "waveAqua2", bold = true },
 }

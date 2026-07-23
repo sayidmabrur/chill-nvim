@@ -29,9 +29,43 @@ map("n", "<C-h>", ":vertical resize +2<CR>", "Window: increase width")
 map("n", "<C-l>", ":vertical resize -2<CR>", "Window: decrease width")
 map("n", "<C-k>", ":resize -2<CR>", "Window: decrease height")
 
+-- LSP environment / interpreter chooser. Filetype-aware dispatcher so more
+-- languages can be added later; for now only Python (pyright) is wired up.
+map("n", "<leader>l", function()
+	local ft = vim.bo.filetype
+	if ft == "python" then
+		require("config.lsp.python_env").choose()
+	else
+		vim.notify("No LSP environment chooser for filetype '" .. ft .. "' yet.", vim.log.levels.INFO)
+	end
+end, "LSP: choose environment")
+
 -- Buffer cycle (bufferline is disabled in favour of the tabby tabline).
 map("n", "]b", ":bnext<cr>", "Buffer: next")
 map("n", "[b", ":bprevious<cr>", "Buffer: previous")
+-- leader equivalents under the Buffer group
+map("n", "<leader>bn", ":bnext<cr>", "Buffer: next")
+map("n", "<leader>bN", ":bprevious<cr>", "Buffer: previous")
+
+-- Buffer move: relocate the current buffer's window to a screen edge.
+-- Mirrors vim's <C-w> window-move commands: h left, j bottom, k top, l right.
+-- The Claude Code terminal is excluded: if it's the focused window the command
+-- is a no-op, so buffer-move never drags the Claude session around.
+local function buffer_move(dir)
+	return function()
+		local ok, term = pcall(require, "claudecode.terminal")
+		local cbuf = ok and term.get_active_terminal_bufnr and term.get_active_terminal_bufnr() or nil
+		if cbuf and vim.api.nvim_get_current_buf() == cbuf then
+			vim.notify("Buffer move: ignoring the Claude Code terminal", vim.log.levels.INFO)
+			return
+		end
+		vim.cmd("wincmd " .. dir)
+	end
+end
+map("n", "<leader>bmh", buffer_move("H"), "Buffer move: far left")
+map("n", "<leader>bmj", buffer_move("J"), "Buffer move: bottom")
+map("n", "<leader>bmk", buffer_move("K"), "Buffer move: top")
+map("n", "<leader>bml", buffer_move("L"), "Buffer move: far right")
 
 -- Jumplist back/forward. <C-o> (back) is built-in; pair it with <C-S-o> to jump
 -- forward (same as the built-in <C-i>) so you can go back and forth. <C-S-o> is

@@ -1,89 +1,79 @@
-local utils = require("heirline.utils")
+local pill = require("config.heirline.components.core.pill")
+local icons = require("config.heirline.components.icons")
 
 local ViMode = {
-	-- get vim current mode, this information will be required by the provider
-	-- and the highlight functions, so we compute it only once per component
-	-- evaluation and store it as a component attribute
+	-- compute mode once per evaluation and stash it on the instance
 	init = function(self)
 		self.mode = vim.fn.mode(1) -- :h mode()
 	end,
-	-- Now we define some dictionaries to map the output of mode() to the
-	-- corresponding string and color. We can put these into `static` to compute
-	-- them at initialisation time.
+
 	static = {
-		mode_names = { -- change the strings if you like it vvvvverbose!
+		-- verbose-ish names (short forms for the exotic sub-modes)
+		mode_names = {
 			n = "NORMAL",
-			no = "N?",
-			nov = "N?",
-			noV = "N?",
-			["no\22"] = "N?",
-			niI = "Ni",
-			niR = "Nr",
-			niV = "Nv",
-			nt = "Nt",
+			no = "OP",
+			nov = "OP",
+			noV = "OP",
+			["no\22"] = "OP",
+			niI = "NORMAL",
+			niR = "NORMAL",
+			niV = "NORMAL",
+			nt = "NORMAL",
 			v = "VISUAL",
-			vs = "Vs",
-			V = "V_",
-			Vs = "Vs",
+			vs = "VISUAL",
+			V = "V-LINE",
+			Vs = "V-LINE",
 			["\22"] = "V-BLOCK",
-			["\22s"] = "^V",
-			s = "S",
-			S = "S_",
-			["\19"] = "^S",
+			["\22s"] = "V-BLOCK",
+			s = "SELECT",
+			S = "S-LINE",
+			["\19"] = "S-BLOCK",
 			i = "INSERT",
-			ic = "Ic",
-			ix = "Ix",
-			R = "R",
-			Rc = "Rc",
-			Rx = "Rx",
-			Rv = "Rv",
-			Rvc = "Rv",
-			Rvx = "Rv",
+			ic = "INSERT",
+			ix = "INSERT",
+			R = "REPLACE",
+			Rc = "REPLACE",
+			Rx = "REPLACE",
+			Rv = "V-REPLACE",
+			Rvc = "V-REPLACE",
+			Rvx = "V-REPLACE",
 			c = "COMMAND",
-			cv = "Ex",
-			r = "...",
-			rm = "M",
-			["r?"] = "?",
-			["!"] = "!",
+			cv = "EX",
+			r = "PROMPT",
+			rm = "MORE",
+			["r?"] = "CONFIRM",
+			["!"] = "SHELL",
 			t = "TERMINAL",
 		},
+		-- one icon per mode family (keyed by the first char of mode()); built via
+		-- nr2char in the icons module so the glyphs can't be dropped on edit.
+		mode_icons = icons.mode,
 	},
+
 	provider = function(self)
-		return "󰞇 %2(" .. self.mode_names[vim.fn.mode(1)] .. "%)"
-		-- return " %2(" .. self.mode_names[vim.fn.mode(1)] .. "%)"
+		local m = self.mode
+		local icon = self.mode_icons[m] or self.mode_icons[m:sub(1, 1)] or ""
+		local name = self.mode_names[m] or m
+		return string.format(" %s %s ", icon, name)
 	end,
-	hl = function(self)
-		return { fg = "black", bold = true }
-	end,
-	-- -- We can now access the value of mode() that, by now, would have been
-	-- -- computed by `init()` and use it to index our strings dictionary.
-	-- -- note how `static` fields become just regular attributes once the
-	-- -- component is instantiated.
-	-- -- To be extra meticulous, we can also add some vim statusline syntax to
-	-- -- control the padding and make sure our string is always at least 2
-	-- -- characters long. Plus a nice Icon.
-	-- provider = function(self)
-	-- 	return " %2(" .. self.mode_names[self.mode] .. "%)"
-	-- end,
-	-- -- Same goes for the highlight. Now the foreground will change according to the current mode.
-	-- hl = function(self)
-	-- 	local mode = self.mode:sub(1, 1) -- get only the first mode character
-	-- 	return { fg = self.mode_colors[mode], bold = true }
-	-- end,
-	-- -- Re-evaluate the component only on ModeChanged event!
-	-- -- Also allows the statusline to be re-evaluated when entering operator-pending mode
-	-- update = {
-	-- 	"ModeChanged",
-	-- 	pattern = "*:*",
-	-- 	callback = vim.schedule_wrap(function()
-	-- 		vim.cmd("redrawstatus")
-	-- 	end),
-	-- },
+
+	-- dark ink on the bright mode colour, always bold
+	hl = { fg = "sumiInk0", bold = true },
+
+	-- redraw the line the instant the mode changes (covers operator-pending too)
+	update = {
+		"ModeChanged",
+		pattern = "*:*",
+		callback = vim.schedule_wrap(function()
+			vim.cmd("redrawstatus")
+		end),
+	},
 }
 
-local Ruler = require("config.heirline.components.core.ruler")
-ViMode = utils.surround({ "", "" }, function(self)
+-- rounded pill tinted with the current mode colour (resolved up the ancestor
+-- chain from the statusline's `mode_color` helper)
+ViMode = pill(function(self)
 	return self:mode_color()
-end, { ViMode })
+end, ViMode)
 
 return ViMode

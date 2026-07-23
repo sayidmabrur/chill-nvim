@@ -27,8 +27,13 @@ return {
 		--   WIDTH           = ASCII columns when baking splash_hero.gif
 		--   MAX_FRAMES      = cap baked frames; long GIFs are down-sampled (ffmpeg)
 		--                     so the baked Lua stays small. 0 = keep every frame.
-		--   NO_BG           = cut the background out of splash_hero (--no-bg) so only
-		--                     the subject shows over the transparent float
+		--   NO_BG           = cut the dark background out of splash_hero so only the
+		--                     subject shows over the transparent float
+		--   BG_THRESHOLD    = how dark counts as "background" (0..1, luma-gated). Low
+		--                     (~0.1) drops the black bg but keeps bright fills (e.g. a
+		--                     yellow body); raise it to strip more, but too high erodes
+		--                     the art's own dark parts (outlines/eyes). 1.0 = --no-bg
+		--                     (strips ALL fills — usually not what you want).
 		local IDLE_MS = 30000
 		local FALLBACK_SPLASH = "vibecat"
 		local SHOW_CLOCK = true
@@ -37,6 +42,12 @@ return {
 		local WIDTH = 80
 		local MAX_FRAMES = 60
 		local NO_BG = true
+		local BG_THRESHOLD = 0.1
+		-- KEY_EDGES: milli only luma-keys DARK backgrounds. To also cut a light/solid
+		-- background, floodfill the border-connected background to black first (from the
+		-- 4 corners) so the threshold can remove it. FUZZ = color tolerance (%).
+		local KEY_EDGES = true
+		local FUZZ = 25
 
 		-- YOUR ANIME: drop/replace ~/.config/nvim/splash_hero.gif and it becomes the
 		-- screensaver. milli can't read a GIF live, so we bake it to a Lua splash
@@ -113,24 +124,54 @@ return {
 				cut = no_bg_override
 			end
 
-			-- milli export <src> → out/frames.lua → copy into place.
+			-- milli export <src> → out/frames.lua → copy into place. When cutting, the
+			-- source is first edge-keyed (light bg → black) so the luma threshold works.
 			local function export_from(src)
-				local args = { "milli", "export", src, out, "-t", "lua", "-w", tostring(WIDTH) }
-				if cut then
-					table.insert(args, "--no-bg") -- transparent cutout: drop the background
+				local function do_export(gif)
+					local args = { "milli", "export", gif, out, "-t", "lua", "-w", tostring(WIDTH) }
+					if cut then
+						-- luma-gated cutout: drop dark background, keep the bright subject.
+						vim.list_extend(args, { "--bg-threshold", tostring(BG_THRESHOLD) })
+					end
+					run(args, function(res)
+						if res.code ~= 0 then
+							vim.notify("splash_hero build failed:\n" .. (res.stderr or res.stdout or ""), vim.log.levels.ERROR)
+							return
+						end
+						if not uv.fs_copyfile(out .. "/frames.lua", HERO_LUA) then
+							vim.notify("splash_hero: built but could not copy frames.lua", vim.log.levels.ERROR)
+							return
+						end
+						package.loaded["milli.splashes." .. HERO_NAME] = nil -- drop stale require cache
+						vim.notify("splash_hero baked from splash_hero.gif ✓ (idle to see it)", vim.log.levels.INFO)
+					end)
 				end
-				run(args, function(res)
-					if res.code ~= 0 then
-						vim.notify("splash_hero build failed:\n" .. (res.stderr or res.stdout or ""), vim.log.levels.ERROR)
-						return
-					end
-					if not uv.fs_copyfile(out .. "/frames.lua", HERO_LUA) then
-						vim.notify("splash_hero: built but could not copy frames.lua", vim.log.levels.ERROR)
-						return
-					end
-					package.loaded["milli.splashes." .. HERO_NAME] = nil -- drop stale require cache
-					vim.notify("splash_hero baked from splash_hero.gif ✓ (idle to see it)", vim.log.levels.INFO)
-				end)
+
+				-- Edge-key a light/solid background to black (from all 4 corners) so
+				-- milli's dark-luma threshold can then remove it. Harmless on dark bgs.
+				if cut and KEY_EDGES and vim.fn.executable("magick") == 1 then
+					run({ "magick", "identify", "-format", "%w %h", src .. "[0]" }, function(idr)
+						local ws, hs = (idr.stdout or ""):match("(%d+)%s+(%d+)")
+						if not ws then
+							do_export(src) -- no dimensions → skip keying, bake as-is
+							return
+						end
+						local w, h = tonumber(ws) - 1, tonumber(hs) - 1
+						local keyed = out .. "/keyed.gif"
+						run({
+							"magick", src, "-coalesce", "-fuzz", FUZZ .. "%", "-fill", "black",
+							"-draw", "color 0,0 floodfill",
+							"-draw", "color " .. w .. ",0 floodfill",
+							"-draw", "color 0," .. h .. " floodfill",
+							"-draw", "color " .. w .. "," .. h .. " floodfill",
+							keyed,
+						}, function(kr)
+							do_export(kr.code == 0 and keyed or src)
+						end)
+					end)
+				else
+					do_export(src)
+				end
 			end
 
 			-- Long GIFs bake into huge Lua files, so down-sample to MAX_FRAMES first

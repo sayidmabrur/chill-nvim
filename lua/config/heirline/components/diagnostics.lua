@@ -1,6 +1,6 @@
 local conditions = require("heirline.conditions")
 
-local colors = require("config.heirline.components.colors.kanagawa")
+local colors = require("config.heirline.components.colors.dynamic")
 require("heirline").load_colors(colors)
 return {
 
@@ -50,7 +50,9 @@ return {
 	},
 	on_click = {
 		callback = function()
-			require("trouble").toggle({ mode = "document_diagnostics" })
+			-- trouble.nvim v3: the v2 "document_diagnostics" mode is now the
+			-- "diagnostics" source; scope it to the current buffer with a filter.
+			require("trouble").toggle({ mode = "diagnostics", filter = { buf = 0 } })
 			-- or
 			-- vim.diagnostic.setqflist()
 		end,

@@ -1,4 +1,7 @@
 local conditions = require("heirline.conditions")
+local icons = require("config.heirline.components.icons")
+
+-- Git branch + working-tree diff counts:   <branch>  +a ~c -r
 return {
 	condition = conditions.is_git_repo,
 
@@ -9,25 +12,31 @@ return {
 
 	hl = { fg = "springGreen" },
 
-	{ -- git branch name
+	{ -- branch name with the git-branch logo
 		provider = function(self)
-			return " " .. self.status_dict.head
+			return icons.git_branch .. " " .. self.status_dict.head
 		end,
 		hl = { bold = true },
 	},
-	-- You could handle delimiters, icons and counts similar to Diagnostics
-	{
+	{ -- gap before the diff counts
 		condition = function(self)
 			return self.has_changes
 		end,
-		provider = "(",
+		provider = "  ",
 	},
 	{
 		provider = function(self)
 			local count = self.status_dict.added or 0
-			return count > 0 and ("+" .. count)
+			return count > 0 and ("+" .. count .. " ")
 		end,
 		hl = { fg = "autumnGreen" },
+	},
+	{
+		provider = function(self)
+			local count = self.status_dict.changed or 0
+			return count > 0 and ("~" .. count .. " ")
+		end,
+		hl = { fg = "autumnYellow" },
 	},
 	{
 		provider = function(self)
@@ -35,18 +44,5 @@ return {
 			return count > 0 and ("-" .. count)
 		end,
 		hl = { fg = "autumnRed" },
-	},
-	{
-		provider = function(self)
-			local count = self.status_dict.changed or 0
-			return count > 0 and ("~" .. count)
-		end,
-		hl = { fg = "autumnYellow" },
-	},
-	{
-		condition = function(self)
-			return self.has_changes
-		end,
-		provider = ")",
 	},
 }
