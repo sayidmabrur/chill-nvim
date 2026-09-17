@@ -41,8 +41,14 @@ return {
 		-- Terminal: <leader>ut is reliable in every terminal; <C-/> (with its
 		-- <C-_> alias that many terminals send for Ctrl+/) is the quick toggle
 		-- and also closes it from inside terminal mode.
-		{ "<leader>ut", function() Snacks.terminal.toggle() end, desc = "Terminal (toggle)" },
-		{ "<C-/>", function() Snacks.terminal.toggle() end, mode = { "n", "t" }, desc = "Terminal (toggle)" },
-		{ "<C-_>", function() Snacks.terminal.toggle() end, mode = { "n", "t" }, desc = "which_key_ignore" },
+		--
+		-- These go through core.terminal instead of Snacks.terminal.toggle()
+		-- directly: a bare toggle keys the terminal on the WINDOW-local cwd and
+		-- vim.v.count1, both of which drift, and a drifted key makes Snacks spawn
+		-- a new terminal instead of reopening yours. core.terminal pins the key
+		-- per tab page, so <C-/> always finds this tab's terminal. See that file.
+		{ "<leader>ut", function() require("core.terminal").toggle() end, desc = "Terminal (toggle)" },
+		{ "<C-/>", function() require("core.terminal").toggle() end, mode = { "n", "t" }, desc = "Terminal (toggle)" },
+		{ "<C-_>", function() require("core.terminal").toggle() end, mode = { "n", "t" }, desc = "which_key_ignore" },
 	},
 }

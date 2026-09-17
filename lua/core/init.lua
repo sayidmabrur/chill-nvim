@@ -15,3 +15,5 @@ require("core.options")
 require("core.keymaps")
 require("core.autoreload")
 require("core.focus")
+require("core.terminal") -- one shell terminal per tab, reliably reused
+require("core.pin") -- Neo-tree + Claude pinned identically across tabs

@@ -129,51 +129,20 @@ vim.api.nvim_create_autocmd("VimEnter", {
 	end,
 })
 
--- Sticky Claude terminal across tabs. The plugin keeps ONE Claude session, but
--- its window only lives in the tab it was opened in (its visibility check is
--- global, so switching tabs leaves it behind). This makes the very same terminal
--- follow you: on entering a tab, if Claude is open in another tab, close that
--- window and re-show the same buffer here (no focus steal, no new session). If
--- Claude is hidden everywhere (you toggled it off with <leader>ac), it stays
--- hidden -- we never resurrect it.
-vim.api.nvim_create_autocmd("TabEnter", {
-	group = vim.api.nvim_create_augroup("ClaudeStickyTab", { clear = true }),
-	callback = function()
-		vim.schedule(function()
-			local ok, term = pcall(require, "claudecode.terminal")
-			if not ok or type(term.get_active_terminal_bufnr) ~= "function" then
-				return
-			end
-			local buf = term.get_active_terminal_bufnr()
-			if not buf or not vim.api.nvim_buf_is_valid(buf) then
-				return
-			end
-			local cur_tab = vim.api.nvim_get_current_tabpage()
-			local here, elsewhere = false, {}
-			local info = vim.fn.getbufinfo(buf)[1]
-			for _, win in ipairs((info and info.windows) or {}) do
-				if vim.api.nvim_win_is_valid(win) then
-					if vim.api.nvim_win_get_tabpage(win) == cur_tab then
-						here = true
-					else
-						table.insert(elsewhere, win)
-					end
-				end
-			end
-			-- already in this tab, or hidden everywhere (user closed it): leave it.
-			if here or #elsewhere == 0 then
-				return
-			end
-			-- open in another tab -> relocate the same terminal into this one.
-			for _, win in ipairs(elsewhere) do
-				pcall(vim.api.nvim_win_close, win, false)
-			end
-			pcall(function()
-				term.ensure_visible()
-			end)
-		end)
-	end,
-})
+-- Claude is PINNED across tabs -- see lua/core/pin.lua, which owns that now.
+--
+-- What used to live here was a TabEnter handler that MOVED the single Claude
+-- window into whatever tab you entered: it closed the window in the other tab
+-- and re-showed the buffer here. Three things went wrong with that.
+--   * Claude visibly jumped out of the tab you left, so every gt reshuffled the
+--     layout instead of leaving each tab as you had arranged it.
+--   * It closed the other tab's window blind. When Claude was the only window in
+--     that tab, closing it closed the whole TAB.
+--   * It fired on every TabEnter through vim.schedule, so fast tab switching
+--     queued several relocations that raced each other.
+-- core.pin instead gives each tab its own window onto the same Claude buffer and
+-- hands that window to the plugin, so one session shows up identically
+-- everywhere and the plugin's own focus/hide still act on the tab you are in.
 
 -- Scroll the Claude chat WITHOUT leaving it. Claude's TUI renders full-screen
 -- (alternate screen), so its history is NOT in nvim's terminal-buffer scrollback
@@ -288,8 +257,12 @@ return {
 	},
 	keys = {
 		{ "<leader>a", nil, desc = "AI/Claude Code" },
-		{ "<leader>ac", "<cmd>ClaudeCode<cr>", desc = "Toggle Claude" },
-		{ "<leader>af", "<cmd>ClaudeCodeFocus<cr>", desc = "Focus Claude" },
+		-- Toggle/focus go through core.pin so they act on EVERY tab's copy: a
+		-- toggle-off closes the sidebar everywhere (not just the one window the
+		-- plugin tracks), and a focus lands in this tab instead of teleporting you
+		-- to the tab Claude was first opened in.
+		{ "<leader>ac", function() require("core.pin").toggle_claude() end, desc = "Toggle Claude (all tabs)" },
+		{ "<leader>af", function() require("core.pin").focus_claude() end, desc = "Focus Claude" },
 		{ "<leader>ar", claude_switch("--resume"), desc = "Resume Claude (clean switch)" },
 		{ "<leader>aC", claude_switch("--continue"), desc = "Continue Claude (clean switch)" },
 		{ "<leader>am", "<cmd>ClaudeCodeSelectModel<cr>", desc = "Select Claude model" },

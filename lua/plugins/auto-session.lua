@@ -13,7 +13,15 @@ return {
 		-- session history by launch cwd, so a wandering cwd made a different
 		-- project's sessions show up (see claudecode.lua). Without curdir, cwd
 		-- stays at nvim's launch dir and each project's sessions stay isolated.
-		vim.o.sessionoptions = "blank,buffers,folds,help,tabpages,winsize,winpos,terminal,localoptions"
+		--
+		-- "terminal" is OMITTED too. A restored terminal buffer is a corpse: its
+		-- job is gone, and Snacks (which keys terminals in a runtime table that
+		-- starts empty) has no record of it, so it can never be toggled -- it just
+		-- occupies the buffer list until the next <C-/> appears to "open a new
+		-- terminal". Terminals now start fresh each launch; Claude still picks its
+		-- conversation back up via the --continue auto-resume in claudecode.lua.
+		-- (core.terminal also sweeps any corpses left by sessions saved earlier.)
+		vim.o.sessionoptions = "blank,buffers,folds,help,tabpages,winsize,winpos,localoptions"
 	end,
 
 	---enables autocomplete for opts

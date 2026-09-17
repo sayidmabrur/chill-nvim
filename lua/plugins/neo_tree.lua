@@ -8,7 +8,12 @@ return {
 		"MunifTanjim/nui.nvim",
 	},
 	keys = {
-		{ "<leader>e", "<cmd>Neotree toggle<cr>", desc = "Toggle Neo-tree" },
+		-- Neo-tree is per-tab by design, so `Neotree toggle` only ever affects the
+		-- tab you are in and the tree appears/disappears as you move between tabs.
+		-- core.pin makes it a pinned sidebar instead: one toggle sets the wanted
+		-- state for the whole session, and every tab is brought into line as you
+		-- enter it. See lua/core/pin.lua.
+		{ "<leader>e", function() require("core.pin").toggle_neotree() end, desc = "Toggle Neo-tree (all tabs)" },
 		{ [[\]], "<cmd>Neotree reveal<cr>", desc = "Reveal in Neo-tree" },
 	},
 	opts = {
