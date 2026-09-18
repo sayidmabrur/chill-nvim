@@ -92,18 +92,43 @@ vim.api.nvim_create_user_command("ClaudeCwd", function()
 	)
 end, { desc = "Show the directory Claude Code would launch in (its session bucket)" })
 
--- Auto-resume Claude on startup: reopen it right where you left off. Fires only
--- on a bare `nvim` launch (no file/dir args -- the "resume my workspace" case),
--- skips $HOME and /, and stays quiet unless this project already has Claude
--- history -- so it never spawns Claude in a dir you've never used it in.
--- `--continue` picks up the most recent conversation for the launch cwd without
--- a picker. Runs after auto-session finishes (VimEnter + schedule).
+-- Does this project already have Claude conversation history? Claude buckets its
+-- sessions at ~/.claude/projects/<launch dir with / and . turned into ->, so the
+-- bucket for our resolved project root tells us whether `--continue` has anything
+-- to continue. Without this check `--continue` errors out in a fresh project.
+local function project_has_history()
+	local cwd = vim.fn.getcwd()
+	-- Resolve from the cwd ITSELF rather than from whatever buffer happens to be
+	-- loaded: core/launchdir.lua guarantees the cwd is the directory you launched
+	-- in, which is the project we mean, and it is stable from the first moment.
+	local root = project_root({ file_dir = cwd, cwd = cwd })
+	local home = vim.env.HOME or vim.fn.expand("~")
+	if root == home or root == "/" then
+		return false
+	end
+	local bucket = home .. "/.claude/projects/" .. (root:gsub("[/.]", "-"))
+	return vim.fn.isdirectory(bucket) == 1 and #vim.fn.glob(bucket .. "/*.jsonl", true, true) > 0
+end
+
+-- How <leader>ac opens Claude: pick the project's most recent conversation back
+-- up (`--continue`, no picker) when there is one, otherwise start a fresh
+-- session. This is where the "resume where I left off" behaviour lives now --
+-- ON THE KEYPRESS, not at startup.
+local function claude_open()
+	vim.cmd(project_has_history() and "ClaudeCode --continue" or "ClaudeCode")
+end
+
+-- Startup auto-open: OFF.
 --
--- Gated by vim.g.claude_autoresume: ON by default, disable it anywhere before
--- startup (e.g. `vim.g.claude_autoresume = false` in your config, or per-launch
--- `nvim --cmd 'let g:claude_autoresume = 0'`).
+-- This used to fire on every bare `nvim` in a project with Claude history, so
+-- just opening an editor spawned a Claude session you did not ask for. Nothing
+-- opens Claude now except you pressing <leader>ac -- which continues the
+-- project's conversation anyway, so nothing is lost by not doing it eagerly.
+--
+-- Flip it back per-launch with `nvim --cmd 'let g:claude_autoresume = 1'`, or
+-- permanently by setting vim.g.claude_autoresume = true before this file loads.
 if vim.g.claude_autoresume == nil then
-	vim.g.claude_autoresume = true
+	vim.g.claude_autoresume = false
 end
 vim.api.nvim_create_autocmd("VimEnter", {
 	group = vim.api.nvim_create_augroup("ClaudeAutoResume", { clear = true }),
@@ -112,19 +137,11 @@ vim.api.nvim_create_autocmd("VimEnter", {
 		if not vim.g.claude_autoresume or vim.fn.argc() > 0 then
 			return
 		end
+		-- Deferred so auto-session has finished restoring before we resolve the root.
 		vim.schedule(function()
-			local root = project_root({ cwd = vim.fn.getcwd() })
-			local home = vim.env.HOME or vim.fn.expand("~")
-			if root == home or root == "/" then
-				return
+			if project_has_history() then
+				vim.cmd("ClaudeCode --continue")
 			end
-			-- Claude buckets sessions at ~/.claude/projects/<path, / and . -> ->
-			local slug = (root:gsub("[/.]", "-"))
-			local bucket = home .. "/.claude/projects/" .. slug
-			if vim.fn.isdirectory(bucket) == 0 or #vim.fn.glob(bucket .. "/*.jsonl", true, true) == 0 then
-				return
-			end
-			vim.cmd("ClaudeCode --continue")
 		end)
 	end,
 })
@@ -261,8 +278,8 @@ return {
 		-- toggle-off closes the sidebar everywhere (not just the one window the
 		-- plugin tracks), and a focus lands in this tab instead of teleporting you
 		-- to the tab Claude was first opened in.
-		{ "<leader>ac", function() require("core.pin").toggle_claude() end, desc = "Toggle Claude (all tabs)" },
-		{ "<leader>af", function() require("core.pin").focus_claude() end, desc = "Focus Claude" },
+		{ "<leader>ac", function() require("core.pin").toggle_claude(claude_open) end, desc = "Toggle Claude (all tabs)" },
+		{ "<leader>af", function() require("core.pin").focus_claude(claude_open) end, desc = "Focus Claude" },
 		{ "<leader>ar", claude_switch("--resume"), desc = "Resume Claude (clean switch)" },
 		{ "<leader>aC", claude_switch("--continue"), desc = "Continue Claude (clean switch)" },
 		{ "<leader>am", "<cmd>ClaudeCodeSelectModel<cr>", desc = "Select Claude model" },

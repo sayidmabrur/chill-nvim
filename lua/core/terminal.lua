@@ -116,6 +116,24 @@ function M.toggle()
 	end
 end
 
+--- Close every shell-terminal WINDOW, in every tab, without killing the jobs.
+--- Used before a session is written (see plugins/auto-session.lua) so the saved
+--- layout is the code view alone. auto-session's own close_unsupported_windows
+--- deliberately spares buftype=="terminal", which is why these outlived a save
+--- and came back as dead panes on the next restore.
+function M.close_windows()
+	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+		if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal" then
+			for _, w in ipairs(vim.fn.win_findbuf(buf)) do
+				local tab = vim.api.nvim_win_get_tabpage(w)
+				if #vim.api.nvim_tabpage_list_wins(tab) > 1 then
+					pcall(vim.api.nvim_win_close, w, false)
+				end
+			end
+		end
+	end
+end
+
 -- A terminal buffer is "dead" once its job channel is gone.
 local function job_alive(buf)
 	local id = vim.b[buf].terminal_job_id

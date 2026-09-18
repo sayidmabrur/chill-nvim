@@ -10,6 +10,7 @@ vim.g.loaded_node_provider = 0
 vim.g.loaded_perl_provider = 0
 vim.g.loaded_ruby_provider = 0
 
+require("core.launchdir") -- `nvim <dir>` must cd there BEFORE anything reads the cwd
 require("core.bootstrap")
 require("core.options")
 require("core.keymaps")

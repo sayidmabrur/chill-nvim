@@ -49,13 +49,19 @@ end
 -- but Claude vanished when you tabbed away from it), so in that case we empty the
 -- window out into a normal scratch buffer instead: the tab survives as a plain
 -- editor and the sidebar is still gone, rather than being stuck open forever.
-local function safe_close(win)
+local function close_win(win)
 	if not vim.api.nvim_win_is_valid(win) then
-		return
+		return true
 	end
 	local tab = vim.api.nvim_win_get_tabpage(win)
-	if #vim.api.nvim_tabpage_list_wins(tab) > 1 then
-		pcall(vim.api.nvim_win_close, win, false)
+	if #vim.api.nvim_tabpage_list_wins(tab) <= 1 then
+		return false
+	end
+	return (pcall(vim.api.nvim_win_close, win, false))
+end
+
+local function safe_close(win)
+	if close_win(win) or not vim.api.nvim_win_is_valid(win) then
 		return
 	end
 
@@ -136,7 +142,18 @@ local function claude_show_here(buf)
 		return
 	end
 	local win = vim.api.nvim_get_current_win()
-	if not pcall(vim.api.nvim_win_set_buf, win, buf) then
+	-- Attaching the buffer fires BufEnter for it, because `win` is the current
+	-- window at this point -- and Snacks binds its auto_insert handler to exactly
+	-- that event, so it queues a :startinsert. We are only PLACING the sidebar
+	-- here, not entering it, and the pending insert would then land in whatever
+	-- window we hand focus back to: you press <leader>ac (or just switch tabs) and
+	-- find yourself typing into your source file. Mute BufEnter for this one call.
+	-- BufWinEnter is deliberately left alone -- Snacks' fixbuf autocmd needs it.
+	local saved_ei = vim.o.eventignore
+	vim.opt.eventignore:append("BufEnter")
+	local attached = pcall(vim.api.nvim_win_set_buf, win, buf)
+	vim.o.eventignore = saved_ei
+	if not attached then
 		safe_close(win)
 		return
 	end
@@ -168,7 +185,29 @@ local function claude_show_here(buf)
 
 	if vim.api.nvim_win_is_valid(cur) then
 		vim.api.nvim_set_current_win(cur)
+		-- Belt and braces: never leave the editor in insert mode on our way out.
+		if vim.api.nvim_get_current_win() ~= win then
+			vim.cmd("stopinsert")
+		end
 	end
+end
+
+-- Put the cursor in a Claude window and start typing, the way the plugin does on
+-- a first open. Only ever called from an explicit keypress -- the per-tab sync
+-- must stay silent.
+local function focus_claude_win(win)
+	if not (win and vim.api.nvim_win_is_valid(win)) then
+		return false
+	end
+	vim.api.nvim_set_current_win(win)
+	local inst = claude_instance()
+	if inst then
+		inst.win = win
+	end
+	if vim.bo[vim.api.nvim_win_get_buf(win)].buftype == "terminal" then
+		vim.cmd("startinsert")
+	end
+	return true
 end
 
 -- ── Apply the wanted state to one tab ───────────────────────────────────────
@@ -221,7 +260,10 @@ function M.toggle_neotree()
 	M.apply()
 end
 
-function M.toggle_claude()
+--- @param open? fun() how to launch Claude when no session exists yet.
+--- Defaults to a plain :ClaudeCode; plugins/claudecode.lua passes an opener that
+--- continues the project's most recent conversation.
+function M.toggle_claude(open)
 	if #claude_wins() > 0 then
 		vim.g.pin_claude = false
 		-- Close every copy in every tab, not just this one -- otherwise the other
@@ -239,29 +281,48 @@ function M.toggle_claude()
 	vim.g.pin_claude = true
 	if claude_buf() then
 		M.apply() -- reuse the running session; never start a second one
+		-- <leader>ac means "take me to Claude". The first open focuses it (the
+		-- plugin does that itself); re-opening went through M.apply, which places
+		-- the sidebar WITHOUT focus because it is also the per-tab sync -- so the
+		-- cursor stayed in the code window. Focus it explicitly here instead.
+		focus_claude_win(claude_wins()[1])
+	elseif open then
+		pcall(open) -- first open: let the caller decide how to launch it
 	else
-		pcall(vim.cmd, "ClaudeCode") -- first open: let the plugin spawn it here
+		pcall(vim.cmd, "ClaudeCode")
 	end
 end
 
 -- ClaudeCodeFocus, but tab-local: jump to this tab's copy instead of following
 -- the plugin's single tracked window into whatever tab it lives in.
-function M.focus_claude()
+--- @param open? fun() see M.toggle_claude
+function M.focus_claude(open)
 	local here = claude_wins()
 	if #here > 0 then
 		if vim.api.nvim_get_current_win() == here[1] then
-			M.toggle_claude() -- already in it -> dismiss, like the plugin does
+			M.toggle_claude(open) -- already in it -> dismiss, like the plugin does
 			return
 		end
-		vim.api.nvim_set_current_win(here[1])
-		local inst = claude_instance()
-		if inst then
-			inst.win = here[1]
-		end
-		vim.cmd("startinsert")
+		focus_claude_win(here[1])
 		return
 	end
-	M.toggle_claude()
+	M.toggle_claude(open)
+end
+
+--- Close the pinned sidebars in EVERY tab, leaving only the code view.
+--- Used before a session is written (see plugins/auto-session.lua). Windows only:
+--- the Claude buffer and its process are left alone, so a mid-work :SessionSave
+--- does not kill the conversation -- it just is not part of what gets saved.
+function M.close_sidebars()
+	for _, tab in ipairs(vim.api.nvim_list_tabpages()) do
+		for _, w in ipairs(wins_in(tab, is_neotree)) do
+			close_win(w)
+		end
+		for _, w in ipairs(claude_wins(tab)) do
+			close_win(w)
+		end
+	end
+	vim.g.pin_claude, vim.g.pin_neotree = false, false
 end
 
 -- ── Keep every tab in sync ──────────────────────────────────────────────────

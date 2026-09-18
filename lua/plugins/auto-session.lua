@@ -31,6 +31,50 @@ return {
 		suppressed_dirs = { "~/", "~/Projects", "~/Downloads", "/" },
 		-- log_level = 'debug',
 
+		-- A session records the CODE VIEW and nothing else.
+		--
+		-- auto-session's own close_unsupported_windows explicitly spares
+		-- buftype == "terminal", and it knows nothing about Neo-tree, so a save
+		-- captured the shell terminal, the Claude sidebar and the tree as part of
+		-- the window layout. On the next restore those came back as dead panes:
+		-- terminals with no job (Snacks has no record of them, so they could never
+		-- be toggled), and a tree/Claude split that the pinning logic then had to
+		-- fight. Close them first and the saved layout is just your files.
+		--
+		-- Windows only -- buffers and processes are untouched, so running
+		-- :SessionSave in the middle of work does not kill the Claude session; the
+		-- sidebars simply drop out of the snapshot. Bring them back with
+		-- <leader>e / <leader>ac / <C-/>.
+		pre_save_cmds = {
+			function()
+				pcall(function()
+					require("core.pin").close_sidebars()
+				end)
+				pcall(function()
+					require("core.terminal").close_windows()
+				end)
+
+				-- Drop listed buffers that are not real files on disk. diffview://
+				-- entries, Neo-tree's "<name>_hidden_message" placeholders and
+				-- friends are recorded as `badd` lines and come back on restore as
+				-- buffers that cannot be opened -- this session had 4 of them.
+				-- Modified buffers are kept: an unsaved edit is never junk.
+				for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+					if
+						vim.api.nvim_buf_is_valid(buf)
+						and vim.bo[buf].buflisted
+						and not vim.bo[buf].modified
+						and vim.bo[buf].buftype == ""
+					then
+						local name = vim.api.nvim_buf_get_name(buf)
+						if name ~= "" and vim.fn.filereadable(name) == 0 then
+							pcall(vim.api.nvim_buf_delete, buf, { force = true })
+						end
+					end
+				end
+			end,
+		},
+
 		post_restore_cmds = {
 			function()
 				-- Session restore runs inside an autocmd cycle where did_filetype()
